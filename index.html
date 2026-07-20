@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>无限流 TRPG 战场控制台</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+    <aside class="left-drawer" id="leftDrawer">
+      <header class="drawer-header">
+        <div class="brand-block"><b>∞ TRPG</b><span>战场控制台</span></div>
+        <button id="toggleSidebarBtn" class="square-btn" title="收起选项栏">‹</button>
+      </header>
+
+      <div class="drawer-content">
+        <section class="drawer-section">
+          <div class="section-title"><span>单位管理</span></div>
+          <div class="add-grid">
+            <button id="addUnitBtn" class="dark-btn">＋ 轮回者</button>
+            <button id="addEnemyBtn">＋ 敌人</button>
+          </div>
+          <div id="unitList" class="unit-list"></div>
+          <div class="inline-actions">
+            <button id="duplicateUnitBtn">复制</button>
+            <button id="deleteUnitBtn" class="danger">删除</button>
+          </div>
+        </section>
+
+        <section class="drawer-section detail-section" id="detailSection">
+          <div class="section-title"><span>选中单位设置</span></div>
+          <div id="emptyState" class="drawer-empty">请选择一个单位</div>
+          <div id="unitEditor" class="unit-editor hidden">
+            <div class="avatar-line">
+              <div class="avatar-wrap">
+                <img id="avatarPreview" alt="单位头像" />
+                <div id="avatarFallback" class="avatar-fallback">?</div>
+              </div>
+              <div class="avatar-actions">
+                <strong id="currentUnitTitle">未选择单位</strong>
+                <label class="file-button">更换头像<input id="avatarInput" type="file" accept="image/png,image/jpeg,image/webp" hidden /></label>
+              </div>
+              <div id="autoStateBadge" class="state-badge normal">正常</div>
+            </div>
+
+            <div class="form-grid">
+              <label>名称<input id="unitName" type="text" maxlength="40" /></label>
+              <label>阵营<select id="unitFaction"><option value="reincarnator">轮回者</option><option value="enemy">敌人</option></select></label>
+              <label>生命上限<input id="hpMax" type="number" min="1" max="999" /></label>
+              <label>临时生命<input id="tempHp" type="number" min="0" max="9999" /></label>
+              <label>意志<input id="willCurrent" type="number" min="0" max="999" /></label>
+              <label>意志上限<input id="willMax" type="number" min="0" max="999" /></label>
+            </div>
+
+            <div class="subsection">
+              <div class="subsection-head"><b>生命槽</b><button id="openManualEditBtn">直接编辑</button></div>
+              <div id="healthTrack" class="health-track"></div>
+              <div id="healthSummary" class="health-summary"></div>
+            </div>
+
+            <div class="subsection">
+              <div class="subsection-head"><b>不良状态</b><button id="addStatusBtn">＋</button></div>
+              <div id="statusList" class="stack-list"></div>
+            </div>
+
+            <div class="subsection">
+              <div class="subsection-head"><b>能量池</b><button id="addPoolBtn">＋</button></div>
+              <div id="poolList" class="stack-list"></div>
+            </div>
+
+            <label>备注<textarea id="notes" rows="3"></textarea></label>
+
+            <div class="subsection">
+              <div class="subsection-head"><b>单位记录</b><button id="clearHistoryBtn">清空</button></div>
+              <div id="historyList" class="history-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="drawer-section data-section">
+          <div class="section-title"><span>数据</span></div>
+          <div class="data-grid">
+            <button id="exportBtn">导出</button>
+            <label class="file-button">导入<input id="importInput" type="file" accept="application/json" hidden /></label>
+            <button id="undoBtn">撤销</button>
+            <button id="redoBtn">重做</button>
+            <button id="resetAllBtn" class="danger wide">重置全部</button>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <button id="openSidebarBtn" class="open-drawer-btn hidden" title="展开选项栏">☰</button>
+
+    <main class="battlefield-shell">
+      <header class="battle-topbar">
+        <div class="round-box">第 <span id="roundNumber">1</span> 轮</div>
+        <div class="turn-title">轮到 <b id="turnUnitName">—</b></div>
+        <div id="activeTurnCard" class="active-turn-card">
+          <b>等待设置行动顺序</b>
+          <span>HP — · 意志 —</span>
+        </div>
+      </header>
+
+      <section class="battlefield" id="battlefieldView">
+        <div class="faction-zone enemy-zone">
+          <div class="zone-label">敌方 · 点击选择目标</div>
+          <div id="enemyBoard" class="battle-row"></div>
+        </div>
+        <div class="battle-divider"><span>VS</span></div>
+        <div class="faction-zone ally-zone">
+          <div class="zone-label">我方 · 轮回者</div>
+          <div id="reincarnatorBoard" class="battle-row"></div>
+        </div>
+      </section>
+
+      <section class="quick-control" id="quickControl">
+        <div class="quick-summary">
+          <b id="quickUnitName">未选择单位</b>
+          <span id="quickStats">HP — · 意志 —</span>
+        </div>
+        <div class="quick-group">
+          <label>B<input id="damageB" type="number" min="0" value="0" /></label>
+          <label>L<input id="damageL" type="number" min="0" value="0" /></label>
+          <label>A<input id="damageA" type="number" min="0" value="0" /></label>
+          <button id="applyDamageBtn" class="dark-btn">应用伤害</button>
+        </div>
+        <div class="quick-group heal-group">
+          <label>回血<input id="healAmount" type="number" min="0" value="0" /></label>
+          <select id="healType">
+            <option value="auto">自动 B→L→A</option>
+            <option value="B">仅 B</option><option value="L">仅 L</option><option value="A">仅 A</option>
+          </select>
+          <button id="applyHealBtn">治疗</button>
+        </div>
+        <button id="addCurrentToInitiativeBtn">加入行动顺序</button>
+      </section>
+    </main>
+
+    <aside class="initiative-panel">
+      <header class="initiative-head">
+        <div><span>INITIATIVE</span><h2>行动顺序</h2></div>
+        <button id="clearInitiativeBtn">清空</button>
+      </header>
+      <div id="initiativeList" class="initiative-list"></div>
+      <div class="initiative-controls">
+        <button id="prevTurnBtn">← 上一个</button>
+        <button id="nextTurnBtn" class="dark-btn">下一个 →</button>
+      </div>
+    </aside>
+  </div>
+
+  <dialog id="manualEditDialog">
+    <form method="dialog" class="dialog-card" id="manualEditForm">
+      <div class="subsection-head"><h3>直接编辑生命状态</h3><button value="cancel">×</button></div>
+      <div class="manual-grid">
+        <label>完好<input id="manualGood" type="number" min="0" /></label>
+        <label>B<input id="manualB" type="number" min="0" /></label>
+        <label>L<input id="manualL" type="number" min="0" /></label>
+        <label>A<input id="manualA" type="number" min="0" /></label>
+      </div>
+      <p id="manualEditError" class="error-text"></p>
+      <div class="dialog-actions"><button value="cancel">取消</button><button id="saveManualEditBtn" value="default" class="dark-btn">保存</button></div>
+    </form>
+  </dialog>
+  <script src="script.js"></script>
+</body>
+</html>

@@ -207,3 +207,32 @@ label{font-size:12px}input,select,textarea{font-size:14px;padding:8px}
 @media(max-width:1400px){
   .battle-log-filters button{font-size:9px}
 }
+
+/* v2.3: attributes, defense and severity-aware bad points */
+.subsection-note{font-size:11px;color:var(--muted,#78808c);font-weight:500}
+.attribute-groups{display:grid;gap:8px}
+.attribute-groups fieldset{border:1px solid var(--line,#d8dde5);border-radius:8px;padding:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:0}
+.attribute-groups legend{padding:0 5px;font-size:12px;font-weight:700;color:var(--muted,#667085)}
+.attribute-groups label,.defense-grid label{font-size:11px;color:var(--muted,#667085);display:grid;gap:3px}
+.attribute-groups input,.defense-grid input{width:100%;min-width:0}
+.defense-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.defense-options{display:flex;gap:16px;align-items:center;margin-top:10px;padding:8px 10px;background:#f6f7f9;border-radius:8px}
+.defense-options label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:650}
+.defense-options input{width:auto;margin:0}
+.defense-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.defense-summary span{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--line,#d8dde5);border-radius:8px;font-size:12px}
+.defense-summary b{font-size:18px}
+.battle-unit-defense{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px;padding:6px 8px;border-radius:7px;background:rgba(20,25,35,.06);font-size:11px}
+.battle-unit-defense b{font-size:14px}
+.battle-unit-defense span,.battle-unit-defense small{color:var(--muted,#667085)}
+.status-card{border:1px solid var(--line,#d8dde5);border-left-width:4px;border-radius:9px;padding:9px;display:grid;gap:8px;background:#fff}
+.status-card.mild{border-left-color:#7a8797}.status-card.heavy{border-left-color:#d68b16}.status-card.catastrophic{border-left-color:#b42318}
+.status-card-top{display:grid;grid-template-columns:minmax(90px,1.25fr) 68px auto auto;gap:7px;align-items:end}
+.status-card label{display:grid;gap:3px;font-size:10px;color:var(--muted,#667085)}
+.status-card input,.status-card select{width:100%;min-width:0}
+.status-resistance{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:end}
+.threshold-text{grid-column:1/-1;font-size:10px;color:var(--muted,#667085)}
+.severity-badge{align-self:center;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
+.severity-badge.mild{background:#edf0f3;color:#4d5968}.severity-badge.heavy{background:#fff1d6;color:#925d00}.severity-badge.catastrophic{background:#fee4e2;color:#9c1c13}
+.status-note{display:block!important}.catastrophic-lock{display:flex;justify-content:space-between;align-items:center;padding:7px 8px;border-radius:7px;background:#fff0ef;color:#9c1c13;font-size:11px;font-weight:700}.catastrophic-lock button{padding:4px 7px;font-size:10px}
+@media(max-width:1350px){.defense-grid{grid-template-columns:repeat(3,1fr)}.status-card-top{grid-template-columns:1fr 62px auto}.status-delete{grid-column:3}.severity-badge{grid-column:3;grid-row:1}.status-delete{grid-row:2}.status-card-top label:first-child{grid-column:1/2}}

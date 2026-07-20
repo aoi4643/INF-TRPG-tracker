@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>无限流TRPG战斗记录器v2.1</title>
+  <title>无限流 TRPG 战场控制台</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -53,6 +53,37 @@
               <label>意志上限<input id="willMax" type="number" min="0" max="999" /></label>
             </div>
 
+
+            <div class="subsection">
+              <div class="subsection-head"><b>属性值</b><span class="subsection-note">用于不良点数阈值</span></div>
+              <div class="attribute-groups">
+                <fieldset><legend>生理</legend><label>力量<input id="attrStrength" type="number" min="0" max="99"></label><label>敏捷<input id="attrDexterity" type="number" min="0" max="99"></label><label>耐力<input id="attrStamina" type="number" min="0" max="99"></label></fieldset>
+                <fieldset><legend>心智</legend><label>智力<input id="attrIntelligence" type="number" min="0" max="99"></label><label>感知<input id="attrPerception" type="number" min="0" max="99"></label><label>决心<input id="attrResolve" type="number" min="0" max="99"></label></fieldset>
+                <fieldset><legend>互动</legend><label>风度<input id="attrPresence" type="number" min="0" max="99"></label><label>操控<input id="attrManipulation" type="number" min="0" max="99"></label><label>沉着<input id="attrComposure" type="number" min="0" max="99"></label></fieldset>
+              </div>
+            </div>
+
+            <div class="subsection">
+              <div class="subsection-head"><b>防御</b><span class="subsection-note">仅用于即时查看</span></div>
+              <div class="defense-grid">
+                <label>基础<input id="defBase" type="number" min="0" max="999"></label>
+                <label>闪避<input id="defDodge" type="number" min="0" max="999"></label>
+                <label>格挡<input id="defBlock" type="number" min="0" max="999"></label>
+                <label>盔甲<input id="defArmor" type="number" min="0" max="999"></label>
+                <label>天生<input id="defNatural" type="number" min="0" max="999"></label>
+                <label>盾牌<input id="defShield" type="number" min="0" max="999"></label>
+                <label>其他<input id="defOther" type="number" min="0" max="999"></label>
+              </div>
+              <div class="defense-options">
+                <label><input id="defAmbush" type="checkbox">措手不及</label>
+                <label><input id="defTouch" type="checkbox">接触攻击</label>
+              </div>
+              <div class="defense-summary">
+                <span>正常防御 <b id="defenseNormalTotal">0</b></span>
+                <span>当前防御 <b id="defenseCurrentTotal">0</b></span>
+              </div>
+            </div>
+
             <div class="subsection">
               <div class="subsection-head"><b>生命状态</b><button id="openManualEditBtn">直接编辑</button></div>
               <div id="healthTrack" class="health-track hidden" aria-hidden="true"></div>
@@ -60,7 +91,7 @@
             </div>
 
             <div class="subsection">
-              <div class="subsection-head"><b>不良状态</b><button id="addStatusBtn">＋</button></div>
+              <div class="subsection-head"><b>不良点数</b><button id="addStatusBtn">＋</button></div>
               <div id="statusList" class="stack-list"></div>
             </div>
 

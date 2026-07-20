@@ -20,7 +20,7 @@ const $ = (id) => document.getElementById(id);
 const els = Object.fromEntries([
   'unitList','addUnitBtn','addEnemyBtn','duplicateUnitBtn','exportBtn','importInput','resetAllBtn','currentUnitTitle','undoBtn','redoBtn','deleteUnitBtn',
   'emptyState','unitEditor','unitFaction','avatarPreview','avatarFallback','avatarInput','unitName','hpMax','tempHp','willCurrent','willMax','autoStateBadge',
-  'healthTrack','healthSummary','openManualEditBtn','damageB','damageL','damageA','applyDamageBtn','healAmount','healType','applyHealBtn',
+  'healthTrack','healthSummary','openManualEditBtn','attrStrength','attrDexterity','attrStamina','attrIntelligence','attrPerception','attrResolve','attrPresence','attrManipulation','attrComposure','defBase','defDodge','defBlock','defArmor','defNatural','defShield','defOther','defAmbush','defTouch','defenseNormalTotal','defenseCurrentTotal','damageB','damageL','damageA','applyDamageBtn','healAmount','healType','applyHealBtn',
   'addStatusBtn','statusList','addPoolBtn','poolList','notes','roundNumber','addCurrentToInitiativeBtn',
   'clearInitiativeBtn','initiativeList','clearAuditBtn','auditLogList','unitContextMenu','enemyBoard','reincarnatorBoard','quickUnitName','quickStats','turnUnitName','activeTurnCard','toggleSidebarBtn','openSidebarBtn','appShell','prevTurnBtn','nextTurnBtn','manualEditDialog','manualEditForm','manualGood','manualB','manualL','manualA','manualEditError','saveManualEditBtn'
 ].map(id => [id, $(id)]));
@@ -31,10 +31,22 @@ function clamp(n, min, max) { return Math.min(max, Math.max(min, Number.isFinite
 function num(input) { return Math.max(0, Math.floor(Number(input.value) || 0)); }
 function nowText() { return new Date().toLocaleTimeString('zh-CN', {hour:'2-digit', minute:'2-digit', second:'2-digit'}); }
 
+const ATTRIBUTE_LABELS = {strength:'力量', dexterity:'敏捷', stamina:'耐力', intelligence:'智力', perception:'感知', resolve:'决心', presence:'风度', manipulation:'操控', composure:'沉着'};
+const STATUS_PRESETS = {
+  '耳鸣':['stamina','perception'], '目眩':['stamina','perception'], '恶心':['stamina','resolve'], '晶化':['stamina','resolve'],
+  '精神束缚':['resolve','composure'], '纠缠':['strength','dexterity'], '麻痹':['stamina','resolve'], '晕眩':['stamina','resolve'],
+  '剧痛':['stamina','resolve'], '疲乏':['stamina','strength'], '魅惑':['resolve','presence'], '沮丧':['resolve','composure'],
+  '亢奋':['resolve','composure'], '恐惧':['resolve','composure'], '流血':['stamina','stamina']
+};
+const ATTRIBUTE_OPTIONS = Object.entries(ATTRIBUTE_LABELS).map(([value,label]) => `<option value="${value}">${label}</option>`).join('');
+
 function defaultUnit(index = 1) {
   return {
     id: uid(), name: `单位 ${index}`, faction: 'reincarnator', avatar: '', hpMax: 10, good: 10, B: 0, L: 0, A: 0,
-    tempHp: 0, willCurrent: 0, willMax: 0, statuses: [], pools: [], notes: ''
+    tempHp: 0, willCurrent: 0, willMax: 0,
+    attributes: {strength:2, dexterity:2, stamina:2, intelligence:2, perception:2, resolve:2, presence:2, manipulation:2, composure:2},
+    defense: {base:0, dodge:0, block:0, armor:0, natural:0, shield:0, other:0, ambush:false, touch:false},
+    statuses: [], pools: [], notes: ''
   };
 }
 
@@ -58,6 +70,8 @@ function loadState() {
       delete unit.history;
       unit.statuses = Array.isArray(unit.statuses) ? unit.statuses : [];
       unit.pools = Array.isArray(unit.pools) ? unit.pools : [];
+      unit.attributes = unit.attributes || {};
+      unit.defense = unit.defense || {};
     });
     if (merged.logVersion !== 2) {
       merged.auditLog = merged.auditLog.slice().reverse().map(log => ({
@@ -113,6 +127,32 @@ function normalizeUnit(unit) {
   unit.tempHp = Math.max(0, Math.floor(Number(unit.tempHp) || 0));
   unit.willMax = Math.max(0, Math.floor(Number(unit.willMax) || 0));
   unit.willCurrent = clamp(Math.floor(Number(unit.willCurrent) || 0), 0, unit.willMax);
+  const defaultAttrs = {strength:2, dexterity:2, stamina:2, intelligence:2, perception:2, resolve:2, presence:2, manipulation:2, composure:2};
+  unit.attributes = {...defaultAttrs, ...(unit.attributes || {})};
+  Object.keys(defaultAttrs).forEach(k => unit.attributes[k] = Math.max(0, Math.floor(Number(unit.attributes[k]) || 0)));
+  const defaultDefense = {base:0, dodge:0, block:0, armor:0, natural:0, shield:0, other:0, ambush:false, touch:false};
+  unit.defense = {...defaultDefense, ...(unit.defense || {})};
+  ['base','dodge','block','armor','natural','shield','other'].forEach(k => unit.defense[k] = Math.max(0, Math.floor(Number(unit.defense[k]) || 0)));
+  unit.defense.ambush = !!unit.defense.ambush;
+  unit.defense.touch = !!unit.defense.touch;
+  unit.statuses = (unit.statuses || []).map(s => ({id:s.id || uid(), name:s.name || '自定义', value:Math.max(0,Math.floor(Number(s.value)||0)), note:s.note||'', attr1:s.attr1 || STATUS_PRESETS[s.name]?.[0] || 'stamina', attr2:s.attr2 || STATUS_PRESETS[s.name]?.[1] || 'resolve', catastrophic:!!s.catastrophic}));
+}
+
+function defenseTotals(unit) {
+  const d = unit.defense;
+  const normal = d.base+d.dodge+d.block+d.armor+d.natural+d.shield+d.other;
+  const current = (d.ambush ? 0 : d.base+d.dodge+d.block) + (d.touch ? 0 : d.armor+d.natural+d.shield) + d.other;
+  return {normal, current};
+}
+function statusSeverity(unit, status) {
+  const a1 = unit.attributes[status.attr1] || 0;
+  const a2 = unit.attributes[status.attr2] || 0;
+  const heavy = a1;
+  const catastrophic = a1 + a2;
+  let level = '轻度', cls = 'mild';
+  if (status.value >= catastrophic) { level='毁灭性'; cls='catastrophic'; status.catastrophic = true; }
+  else if (status.value >= heavy) { level='重度'; cls='heavy'; }
+  return {level, cls, heavy, catastrophic, consequence:status.catastrophic};
 }
 
 function normalizeDamage(unit, trace = null) {
@@ -250,10 +290,11 @@ function renderBattlefield() {
     const ally=u.faction!=='enemy';
     card.className=`battle-unit ${ally?'ally':'enemy'} ${u.id===state.selectedUnitId?'selected':''} ${u.id===currentId?'current':''} ${st.cls==='dead'?'dead':''}`;
     const segmentPct = value => Math.max(0, Math.min(100, (value / u.hpMax) * 100));
-    const tags=(u.statuses||[]).filter(x=>x.value>0).map(x=>`${x.name}${x.value}`).join(' · ') || '无不良状态';
+    const tags=(u.statuses||[]).filter(x=>x.value>0).map(x=>{const sev=statusSeverity(u,x);return `${x.name}${x.value}·${sev.level}`}).join(' · ') || '无不良点数';
+    const def=defenseTotals(u); const defFlags=[u.defense.ambush?'措手不及':'',u.defense.touch?'接触攻击':''].filter(Boolean).join(' · ');
     const tempBadge = u.tempHp > 0 ? `<span class="temp-hp-badge">临时 +${u.tempHp}</span>` : '';
     const avatar = u.avatar ? `<img class="battle-avatar" src="${u.avatar}" alt="">` : `<div class="battle-avatar fallback">${escapeHtml((u.name||'?')[0])}</div>`;
-    card.innerHTML=`<div class="battle-unit-head">${avatar}<div class="battle-name"><strong>${escapeHtml(u.name)}</strong><small>${st.text}</small></div></div><div class="injury-bar" title="完好 ${u.good} / B ${u.B} / L ${u.L} / A ${u.A}"><span class="segment good" style="width:${segmentPct(u.good)}%"></span><span class="segment B" style="width:${segmentPct(u.B)}%"></span><span class="segment L" style="width:${segmentPct(u.L)}%"></span><span class="segment A" style="width:${segmentPct(u.A)}%"></span></div><div class="battle-unit-values"><span class="value-legend">完/B/L/A</span><strong>${u.good}/${u.B}/${u.L}/${u.A}</strong></div><div class="battle-unit-resources"><span>${u.tempHp>0?`临时 +${u.tempHp}`:'临时 —'}</span><span>意志 ${u.willCurrent}/${u.willMax}</span></div><div class="battle-unit-tags">${escapeHtml(tags)}</div>`;
+    card.innerHTML=`<div class="battle-unit-head">${avatar}<div class="battle-name"><strong>${escapeHtml(u.name)}</strong><small>${st.text}</small></div></div><div class="injury-bar" title="完好 ${u.good} / B ${u.B} / L ${u.L} / A ${u.A}"><span class="segment good" style="width:${segmentPct(u.good)}%"></span><span class="segment B" style="width:${segmentPct(u.B)}%"></span><span class="segment L" style="width:${segmentPct(u.L)}%"></span><span class="segment A" style="width:${segmentPct(u.A)}%"></span></div><div class="battle-unit-values"><span class="value-legend">完/B/L/A</span><strong>${u.good}/${u.B}/${u.L}/${u.A}</strong></div><div class="battle-unit-resources"><span>${u.tempHp>0?`临时 +${u.tempHp}`:'临时 —'}</span><span>意志 ${u.willCurrent}/${u.willMax}</span></div><div class="battle-unit-defense"><b>DEF ${def.current}</b>${def.current!==def.normal?`<span>正常 ${def.normal}</span>`:''}${defFlags?`<small>${escapeHtml(defFlags)}</small>`:''}</div><div class="battle-unit-tags">${escapeHtml(tags)}</div>`;
     card.addEventListener('click',()=>{state.selectedUnitId=u.id;saveState();render();});
     bindUnitContextMenu(card, u);
     (ally?els.reincarnatorBoard:els.enemyBoard).appendChild(card);
@@ -281,6 +322,12 @@ function renderEditor() {
   els.currentUnitTitle.textContent = u.name;
   setValue(els.unitName, u.name); setValue(els.unitFaction, u.faction); setValue(els.hpMax, u.hpMax); setValue(els.tempHp, u.tempHp);
   setValue(els.willCurrent, u.willCurrent); setValue(els.willMax, u.willMax); setValue(els.notes, u.notes || '');
+  const attrMap={attrStrength:'strength',attrDexterity:'dexterity',attrStamina:'stamina',attrIntelligence:'intelligence',attrPerception:'perception',attrResolve:'resolve',attrPresence:'presence',attrManipulation:'manipulation',attrComposure:'composure'};
+  Object.entries(attrMap).forEach(([id,key])=>setValue(els[id],u.attributes[key]));
+  const defMap={defBase:'base',defDodge:'dodge',defBlock:'block',defArmor:'armor',defNatural:'natural',defShield:'shield',defOther:'other'};
+  Object.entries(defMap).forEach(([id,key])=>setValue(els[id],u.defense[key]));
+  els.defAmbush.checked=u.defense.ambush; els.defTouch.checked=u.defense.touch;
+  const dt=defenseTotals(u); els.defenseNormalTotal.textContent=dt.normal; els.defenseCurrentTotal.textContent=dt.current;
   if (u.avatar) { els.avatarPreview.src = u.avatar; els.avatarPreview.classList.remove('hidden'); els.avatarFallback.classList.add('hidden'); }
   else { els.avatarPreview.classList.add('hidden'); els.avatarFallback.classList.remove('hidden'); els.avatarFallback.textContent = (u.name || '?')[0]; }
   const st = unitState(u); els.autoStateBadge.className = `state-badge ${st.cls}`; els.autoStateBadge.textContent = st.text;
@@ -300,34 +347,26 @@ function renderHealth(u) {
 
 function renderStatuses(u) {
   els.statusList.innerHTML = '';
-  if (!u.statuses.length) els.statusList.innerHTML = '<p class="hint">暂无不良状态。</p>';
+  if (!u.statuses.length) els.statusList.innerHTML = '<p class="hint">暂无不良点数。</p>';
   u.statuses.forEach(s => {
-    const row = document.createElement('div'); row.className = 'stack-row status-row';
-    row.innerHTML = `<label>名称<input data-k="name" value="${escapeAttr(s.name)}"></label><label>点数<input data-k="value" type="number" min="0" value="${s.value}"></label><label>备注<input data-k="note" value="${escapeAttr(s.note || '')}"></label><button class="danger">删除</button>`;
-    row.querySelectorAll('input').forEach(inp => inp.addEventListener('change', () => {
-      const key = inp.dataset.k;
-      const oldName = s.name;
-      const oldValue = Math.max(0, Math.floor(Number(s.value) || 0));
-      checkpoint('修改不良状态');
-      s[key] = key === 'value' ? Math.max(0, Math.floor(Number(inp.value) || 0)) : inp.value;
-      if (key === 'value') {
-        const delta = s.value - oldValue;
-        if (delta !== 0) {
-          const deltaText = `${delta > 0 ? '+' : ''}${delta}`;
-          const eventText = `${u.name} ${s.name} ${deltaText} 不良点数`;
-          addBattleLog(eventText, 'status', u);
-        }
-      } else if (key === 'name') {
-      } else {
-      }
+    const presetNames = ['自定义', ...Object.keys(STATUS_PRESETS)];
+    const options = presetNames.map(name => `<option value="${name}" ${s.name===name?'selected':''}>${name}</option>`).join('');
+    const sev = statusSeverity(u, s);
+    const row = document.createElement('div'); row.className = `status-card ${sev.cls}`;
+    row.innerHTML = `<div class="status-card-top"><label>类型<select data-k="name">${options}</select></label><label>点数<input data-k="value" type="number" min="0" value="${s.value}"></label><span class="severity-badge ${sev.cls}">${sev.level}</span><button class="danger status-delete">删除</button></div><div class="status-resistance"><label>关键属性 1<select data-k="attr1">${ATTRIBUTE_OPTIONS}</select></label><span>＋</span><label>关键属性 2<select data-k="attr2">${ATTRIBUTE_OPTIONS}</select></label><span class="threshold-text">重度 ≥ ${sev.heavy}　毁灭性 ≥ ${sev.catastrophic}</span></div><label class="status-note">备注<input data-k="note" value="${escapeAttr(s.note || '')}"></label>${sev.consequence?`<div class="catastrophic-lock">毁灭性后果已触发 <button type="button" class="clear-catastrophic">解除后果</button></div>`:''}`;
+    row.querySelector('[data-k="attr1"]').value=s.attr1;
+    row.querySelector('[data-k="attr2"]').value=s.attr2;
+    row.querySelectorAll('input,select').forEach(inp => inp.addEventListener('change', () => {
+      const key = inp.dataset.k, oldValue = s.value, oldName=s.name;
+      checkpoint('修改不良点数');
+      if(key==='value') s.value=Math.max(0,Math.floor(Number(inp.value)||0));
+      else s[key]=inp.value;
+      if(key==='name' && STATUS_PRESETS[s.name]) [s.attr1,s.attr2]=STATUS_PRESETS[s.name];
+      if(key==='value' && s.value!==oldValue) addBattleLog(`${u.name} ${s.name} ${s.value-oldValue>0?'+':''}${s.value-oldValue} 不良点数`,'status',u);
       finishChange();
     }));
-    row.querySelector('button').addEventListener('click', () => {
-      checkpoint('删除不良状态');
-      u.statuses = u.statuses.filter(x => x.id !== s.id);
-      if (s.value > 0) addBattleLog(`${u.name} ${s.name} -${s.value} 不良点数`, 'status', u);
-      finishChange();
-    });
+    row.querySelector('.status-delete').addEventListener('click', () => { checkpoint('删除不良点数'); u.statuses=u.statuses.filter(x=>x.id!==s.id); if(s.value>0)addBattleLog(`${u.name} ${s.name} -${s.value} 不良点数`,'status',u); finishChange(); });
+    row.querySelector('.clear-catastrophic')?.addEventListener('click',()=>{checkpoint('解除毁灭性后果');s.catastrophic=false;finishChange();});
     els.statusList.appendChild(row);
   });
 }
@@ -497,6 +536,13 @@ els.deleteUnitBtn.addEventListener('click', () => deleteUnitById(state.selectedU
     commit(`修改${u.name}的${key}`, u);
   });
 });
+const attributeFieldMap={attrStrength:'strength',attrDexterity:'dexterity',attrStamina:'stamina',attrIntelligence:'intelligence',attrPerception:'perception',attrResolve:'resolve',attrPresence:'presence',attrManipulation:'manipulation',attrComposure:'composure'};
+Object.entries(attributeFieldMap).forEach(([id,key])=>els[id].addEventListener('change',()=>{const u=selectedUnit();if(!u)return;checkpoint('修改属性值');u.attributes[key]=num(els[id]);finishChange();}));
+const defenseFieldMap={defBase:'base',defDodge:'dodge',defBlock:'block',defArmor:'armor',defNatural:'natural',defShield:'shield',defOther:'other'};
+Object.entries(defenseFieldMap).forEach(([id,key])=>els[id].addEventListener('change',()=>{const u=selectedUnit();if(!u)return;checkpoint('修改防御');u.defense[key]=num(els[id]);finishChange();}));
+els.defAmbush.addEventListener('change',()=>{const u=selectedUnit();if(!u)return;checkpoint('切换措手不及');u.defense.ambush=els.defAmbush.checked;finishChange();});
+els.defTouch.addEventListener('change',()=>{const u=selectedUnit();if(!u)return;checkpoint('切换接触攻击');u.defense.touch=els.defTouch.checked;finishChange();});
+
 els.unitFaction.addEventListener('change', () => {
   const u = selectedUnit();
   if (!u) return;
@@ -552,7 +598,7 @@ els.addStatusBtn.addEventListener('click', () => {
   const u = selectedUnit();
   if (!u) return;
   checkpoint('添加不良状态');
-  u.statuses.push({id:uid(), name:'新状态', value:0, note:''});
+  u.statuses.push({id:uid(), name:'恶心', value:0, note:'', attr1:'stamina', attr2:'resolve', catastrophic:false});
   commit('添加不良状态', u);
 });
 els.addPoolBtn.addEventListener('click', () => {

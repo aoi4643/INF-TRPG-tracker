@@ -54,8 +54,8 @@
             </div>
 
             <div class="subsection">
-              <div class="subsection-head"><b>生命槽</b><button id="openManualEditBtn">直接编辑</button></div>
-              <div id="healthTrack" class="health-track"></div>
+              <div class="subsection-head"><b>生命状态</b><button id="openManualEditBtn">直接编辑</button></div>
+              <div id="healthTrack" class="health-track hidden" aria-hidden="true"></div>
               <div id="healthSummary" class="health-summary"></div>
             </div>
 
@@ -71,10 +71,6 @@
 
             <label>备注<textarea id="notes" rows="3"></textarea></label>
 
-            <div class="subsection">
-              <div class="subsection-head"><b>单位记录</b><button id="clearHistoryBtn">清空</button></div>
-              <div id="historyList" class="history-list"></div>
-            </div>
           </div>
         </section>
 
@@ -99,7 +95,7 @@
         <div class="turn-title">轮到 <b id="turnUnitName">—</b></div>
         <div id="activeTurnCard" class="active-turn-card">
           <b>等待设置行动顺序</b>
-          <span>HP — · 意志 —</span>
+          <span>完/B/L/A — · 意志 —</span>
         </div>
       </header>
 
@@ -118,7 +114,7 @@
       <section class="quick-control" id="quickControl">
         <div class="quick-summary">
           <b id="quickUnitName">未选择单位</b>
-          <span id="quickStats">HP — · 意志 —</span>
+          <span id="quickStats">完/B/L/A — · 意志 —</span>
         </div>
         <div class="quick-group">
           <label>B<input id="damageB" type="number" min="0" value="0" /></label>
@@ -148,7 +144,28 @@
         <button id="prevTurnBtn">← 上一个</button>
         <button id="nextTurnBtn" class="dark-btn">下一个 →</button>
       </div>
+      <section class="battle-log-panel">
+        <div class="battle-log-head"><b>战斗日志</b><button id="clearAuditBtn">清空</button></div>
+        <div class="battle-log-filters" aria-label="日志筛选">
+          <button class="active" data-log-filter="all">全部</button>
+          <button data-log-filter="damage">伤害</button>
+          <button data-log-filter="heal">治疗</button>
+          <button data-log-filter="status">状态</button>
+          <button data-log-filter="other">其它</button>
+        </div>
+        <div id="auditLogList" class="audit-log-list"></div>
+      </section>
     </aside>
+  </div>
+
+
+  <div id="unitContextMenu" class="unit-context-menu hidden" role="menu" aria-label="单位快捷操作">
+    <button type="button" data-context-action="damage">受到伤害</button>
+    <button type="button" data-context-action="heal">治疗</button>
+    <button type="button" data-context-action="status">修改状态</button>
+    <div class="context-menu-divider"></div>
+    <button type="button" data-context-action="duplicate">复制单位</button>
+    <button type="button" data-context-action="delete" class="danger">删除单位</button>
   </div>
 
   <dialog id="manualEditDialog">
